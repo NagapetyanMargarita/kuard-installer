@@ -1,0 +1,28 @@
+- name: Monitoring | Create monitoring namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ monitoring_namespace }}"
+    state: present
+
+- name: Monitoring | Add Helm repositories
+  community.kubernetes.helm_repository:
+    name: "{{ item.key }}"
+    repo_url: "{{ item.value }}"
+  loop: "{{ helm_repositories|dict2items }}"
+
+#- name: Monitoring | Apply dashboards ConfigMap to Kubernetes
+#  kubernetes.core.k8s:
+#    state: present
+#    definition: "{{ lookup('template', 'dashboard-configmap.yml.j2') }}"
+
+- name: Install kube-prometheus-stack
+  community.kubernetes.helm:
+    name: monitoring
+    chart_ref: prometheus-community/kube-prometheus-stack
+    chart_version: "80.10.0"
+    release_namespace: monitoring
+    create_namespace: true
+    values: "{{ monitoring_values }}"
+    wait: true
+    wait_timeout: "360s"

@@ -1,0 +1,10 @@
+---
+- name: Include checks playbook
+  ansible.builtin.import_playbook: pre_checks.yml
+
+- name: Include checks playbook
+  ansible.builtin.import_playbook: monitoring.yml
+
+- name: Include checks playbook
+  ansible.builtin.import_playbook: post_checks.yml
+    

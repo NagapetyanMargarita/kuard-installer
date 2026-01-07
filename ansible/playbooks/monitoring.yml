@@ -1,0 +1,7 @@
+- name: Monitoring
+  hosts: local
+  become: yes
+  environment:
+    - KUBECONFIG: "{{ kubeconfig_path }}"
+  roles:
+    - monitoring

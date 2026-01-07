@@ -1,0 +1,58 @@
+monitoring_namespace: "monitoring"
+
+helm_repositories:
+  prometheus-community: "https://prometheus-community.github.io/helm-charts"
+  grafana: "https://grafana.github.io/helm-charts"
+
+monitoring_values:
+  grafana:
+    enabled: true
+    adminPassword: admin
+    service:
+      enabled: true
+      type: NodePort
+      nodePort: 30000
+    defaultDashboardsEnabled: false
+    sidecar:
+      dashboards:
+        enabled: false
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://monitoring-kube-prometheus-prometheus.monitoring:9090/
+          access: proxy
+          isDefault: true
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+    dashboards:
+      default:
+        kube-state:
+          gnetId: 13332
+          revision: 12
+          datasource: Prometheus
+        cluster-overview:
+          gnetId: 7249
+          revision: 1
+          datasource: Prometheus
+        volumes:
+          gnetId: 11454
+          revision: 14
+          datasource: Prometheus
+        custom-dashboard:
+          json: |
+            {{ lookup('file', role_path + '/files/dashboards/node-exporter.json') | indent(12, true) }}
+  alertmanager:
+    enabled: false

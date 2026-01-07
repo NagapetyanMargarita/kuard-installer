@@ -1,0 +1,92 @@
+---
+- name: Health Checks | Wait 1 min
+  ansible.builtin.wait_for:
+    timeout: 60
+
+- name: Health Checks | Get failed Pod
+  kubernetes.core.k8s_info:
+    kind: Pod
+    field_selectors: "{{ health_checks_field_selectors }}"
+  register: pod_info
+
+- name: Health Checks | Wrap pod result in failed_resources
+  ansible.builtin.set_fact:
+    failed_resources: "{{ pod_info.resources }}"
+    problematic_pods: []
+
+- name: Health Checks | Get failed Pods
+  ansible.builtin.include_tasks: analyze.yml
+  loop: "{{ failed_resources }}"
+  loop_control:
+    loop_var: health_checks_pod
+    label: "{{ health_checks_pod.metadata.name }}.{{ health_checks_pod.metadata.namespace }}"
+
+- name: Health Checks | Fail if problematic pods remain
+  ansible.builtin.fail:
+    msg: |-
+      Problematic pods found: {{ problematic_pods | length }}
+
+      {% for pod in problematic_pods %}
+      ------------------------------------------------
+      Pod: {{ pod.metadata.name }}
+      Namespace: {{ pod.metadata.namespace }}
+      Phase: {{ pod.status.phase | default('Unknown') }}
+      {% if pod.metadata.ownerReferences is defined and pod.metadata.ownerReferences | length > 0 %}
+      Owner: {{ pod.metadata.ownerReferences[0].kind }}/{{ pod.metadata.ownerReferences[0].name }}
+      {% else %}
+      Owner: no owner
+      {% endif %}
+
+      Container Statuses:
+      {% if pod.status.containerStatuses is defined %}
+      {% for container in pod.status.containerStatuses %}
+        - {{ container.name }}:
+          Ready: {{ container.ready }}
+          Restart Count: {{ container.restartCount }}
+      {% if container.state.waiting is defined %}
+          State: Waiting
+          Reason: {{ container.state.waiting.reason }}
+          Message: {{ container.state.waiting.message | default('N/A') }}
+      {% elif container.state.terminated is defined %}
+          State: Terminated
+          Reason: {{ container.state.terminated.reason }}
+          Exit Code: {{ container.state.terminated.exitCode }}
+          Message: {{ container.state.terminated.message | default('N/A') }}
+      {% elif container.state.running is defined %}
+          State: Running (but pod phase is {{ pod.status.phase }})
+      {% endif %}
+      {% endfor %}
+      {% else %}
+      No container status available
+      {% endif %}
+
+      {% if pod.status.conditions is defined %}
+      Pod Conditions:
+      {% for condition in pod.status.conditions %}
+      {% if condition.status != 'True' %}
+        - {{ condition.type }}: {{ condition.status }}
+      {% if condition.reason is defined %}
+          Reason: {{ condition.reason }}
+      {% endif %}
+      {% if condition.message is defined %}
+          Message: {{ condition.message }}
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+
+      {% if pod.status.message is defined %}
+      Pod Message: {{ pod.status.message }}
+      {% endif %}
+      {% if pod.status.reason is defined %}
+      Pod Reason: {{ pod.status.reason }}
+      {% endif %}
+
+      {% endfor %}
+      ------------------------------------------------
+  when: problematic_pods | length > 0
+
+- name: Health Checks | Success message
+  ansible.builtin.debug:
+    msg: "All pods are in expected state"
+  when: problematic_pods | length == 0

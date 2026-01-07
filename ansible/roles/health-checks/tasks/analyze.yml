@@ -1,0 +1,97 @@
+- name: Health Checks | Extract owner info
+  ansible.builtin.set_fact:
+    pod_owner: >-
+      {{
+        health_checks_pod.metadata.ownerReferences[0] if health_checks_pod.metadata.ownerReferences
+        is defined and health_checks_pod.metadata.ownerReferences|length > 0 else {}
+      }}
+
+- name: Health Checks | Skip orphaned pod (handled separately)
+  when: pod_owner == {}
+  ansible.builtin.set_fact:
+    problematic_pods: "{{ problematic_pods + [health_checks_pod | default({})] }}"
+
+- name: Health Checks | Get parent resource
+  when: pod_owner != {}
+  kubernetes.core.k8s_info:
+    kind: "{{ pod_owner.kind }}"
+    namespace: "{{ health_checks_pod.metadata.namespace }}"
+    name: "{{ pod_owner.name }}"
+  register: parent_info
+  failed_when: false
+  changed_when: false
+
+- name: Health Checks | Check Deployment health
+  when: pod_owner.kind == 'Deployment'
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        (parent_info.resources[0].status.availableReplicas | default(0)) | int
+        >=
+        (parent_info.resources[0].spec.replicas | default(1)) | int
+      }}
+
+- name: Health Checks | Check DaemonSet health
+  when: pod_owner.kind == 'DaemonSet'
+
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        (parent_info.resources[0].status.numberReady | default(0)) | int
+        ==
+        (parent_info.resources[0].status.desiredNumberScheduled | default(0))
+        | int
+      }}
+
+- name: Health Checks | Check DaemonSet health
+  when: pod_owner.kind == 'DaemonSet'
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        (parent_info.resources[0].status.numberReady | default(0)) | int
+        ==
+        (parent_info.resources[0].status.desiredNumberScheduled | default(0)) | int
+      }}
+
+- name: Health Checks | Check Job health
+  when: pod_owner.kind == 'Job'
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        parent_info.resources[0].status.conditions
+        | default([])
+        | selectattr('type', 'equalto', 'Complete')
+        | selectattr('status', 'equalto', 'True')
+        | list
+        | length > 0
+      }}
+
+- name: Health Checks | Check ReplicaSet health
+  when: pod_owner.kind == 'ReplicaSet'
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        (parent_info.resources[0].status.readyReplicas | default(0)) | int
+        ==
+        (parent_info.resources[0].spec.replicas | default(1)) | int
+      }}
+
+- name: Health Checks | Check StatefulSet health
+  when: pod_owner.kind == 'StatefulSet'
+  ansible.builtin.set_fact:
+    is_parent_healthy: >-
+      {{
+        (parent_info.resources[0].status.readyReplicas | default(0)) | int
+        >=
+        (parent_info.resources[0].spec.replicas | default(1)) | int
+      }}
+
+- name: Health Checks | Default to unhealthy for unknown types
+  when: pod_owner.kind not in ['Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'ReplicaSet']
+  ansible.builtin.set_fact:
+    is_parent_healthy: false
+
+- name: Health Checks | Append pod if parent unhealthy or unknown
+  when: pod_owner == {} or not is_parent_healthy
+  ansible.builtin.set_fact:
+    problematic_pods: "{{ problematic_pods + [health_checks_pod] }}"

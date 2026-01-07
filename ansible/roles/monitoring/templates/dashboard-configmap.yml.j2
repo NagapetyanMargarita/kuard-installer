@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: grafana
+    component: dashboard
+data:
+  node-exporter-full.json: |
+    {{ lookup('file', 'files/dashboards/node-exporter.json') | indent(4) }}

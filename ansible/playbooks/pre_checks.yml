@@ -1,0 +1,27 @@
+- name: Pre_checks
+  hosts: local
+  become: yes
+  tasks:
+    - name: Pre_check | Check if kubectl is installed
+      command: which kubectl
+      register: kubectl_check
+      changed_when: false
+      failed_when: false
+
+    - name: Pre_check | Check if Helm is installed
+      command: which helm
+      register: helm_check
+      changed_when: false
+      failed_when: false
+
+    - name: Pre_check | MSG fail kubectl
+      ansible.builtin.assert:
+        that: kubectl_check.rc == 0
+        fail_msg: "Kubectl is not installed. Perform the installation according to the following instructions: https://kubernetes.io/ru/docs/tasks/tools/install-kubectl/"
+        success_msg: "Kubectl is installed. The installer is still working."
+
+    - name: Pre_check | MSG fail Helm
+      ansible.builtin.assert:
+        that: helm_check.rc == 0
+        fail_msg: "Helm is not installed. Perform the installation according to the following instructions: https://timeweb.cloud/docs/k8s/helm"
+        success_msg: "Helm is installed. The installer is still working."
