@@ -27,6 +27,9 @@ fi
 
 mkdir -p logs
 LOG_FILE="logs/$(date +"%Y%m%d_%H%M%S")_installer.log"
-
+touch $LOG_FILE
 # Запуск инсталлятора
-cd ansible && ansible-playbook playbooks/main.yml | tee -a "$LOG_FILE"
+{
+  cd ansible
+  ansible-playbook playbooks/main.yml
+} 2>&1 | tee "$LOG_FILE"
