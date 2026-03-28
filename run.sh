@@ -25,8 +25,8 @@ else
   echo "Запуск происходит от root — ANSIBLE_BECOME_PASS не требуется"
 fi
 
-mkdir -p logs
-LOG_FILE="logs/$(date +"%Y%m%d_%H%M%S")_installer.log"
+mkdir -p _logs
+LOG_FILE="_logs/$(date +"%Y%m%d_%H%M%S")_installer.log"
 touch $LOG_FILE
 # Запуск инсталлятора
 {
