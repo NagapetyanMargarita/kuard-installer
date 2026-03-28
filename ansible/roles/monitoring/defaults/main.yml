@@ -1,8 +1,15 @@
 monitoring_namespace: "monitoring"
+monitoring_helm: "monitoring"
 
-helm_repositories:
-  prometheus-community: "https://prometheus-community.github.io/helm-charts"
-  grafana: "https://grafana.github.io/helm-charts"
+monitoring_prom_datasource_name: "Prometheus"
+monitoring_prom_datasource_type: "prometheus"
+monitoring_prom_datasource_url: "http://monitoring-kube-prometheus-prometheus.monitoring:9090/"
+monitoring_prom_datasource_uid: "prometheus"
+
+monitoring_loki_datasource_name: "Loki"
+monitoring_loki_datasource_type: "loki"
+monitoring_loki_datasource_url: "http://loki.logs.svc.cluster.local:3100"
+monitoring_loki_datasource_uid: "loki"
 
 monitoring_values:
   grafana:
@@ -14,17 +21,29 @@ monitoring_values:
       nodePort: 30000
     defaultDashboardsEnabled: false
     sidecar:
-      dashboards:
-        enabled: false
+      datasources:
+        defaultDatasourceEnabled: false
     datasources:
       datasources.yaml:
         apiVersion: 1
         datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://monitoring-kube-prometheus-prometheus.monitoring:9090/
+        - name: "{{ monitoring_prom_datasource_name }}"
+          type: "{{ monitoring_prom_datasource_type }}"
+          url: "{{ monitoring_prom_datasource_url }}"
+          uid: "{{ monitoring_prom_datasource_uid }}"
           access: proxy
           isDefault: true
+        - name: "{{ monitoring_loki_datasource_name }}"
+          type: "{{ monitoring_loki_datasource_type }}"
+          url: "{{ monitoring_loki_datasource_url }}"
+          uid: "{{ monitoring_loki_datasource_uid }}"
+          access: proxy
+          isDefault: false
+          jsonData:
+            maxLines: 1000
+            httpHeaderName1: 'X-Scope-OrgID'
+          secureJsonData:
+            httpHeaderValue1: 'default'
     dashboardProviders:
       dashboardproviders.yaml:
         apiVersion: 1

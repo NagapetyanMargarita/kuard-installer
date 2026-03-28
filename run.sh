@@ -20,7 +20,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
     echo "Пароль не может быть пустым. Запустите скрипт заново."
     exit 1
   fi
-  export ANSIBLE_BECOME_PASS
+  export ANSIBLE_BECOME_PASS=$ANSIBLE_BECOME_PASS
 else
   echo "Запуск происходит от root — ANSIBLE_BECOME_PASS не требуется"
 fi
@@ -31,5 +31,5 @@ touch $LOG_FILE
 # Запуск инсталлятора
 {
   cd ansible
-  ansible-playbook playbooks/main.yml
+  ansible-playbook -i inventory/hosts.ini playbooks/main.yml
 } 2>&1 | tee "$LOG_FILE"

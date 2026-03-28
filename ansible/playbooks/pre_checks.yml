@@ -1,6 +1,6 @@
 - name: Pre_checks
   hosts: local
-  become: yes
+  become: true
   tasks:
     - name: Pre_check | Check if kubectl is installed
       command: which kubectl
@@ -14,6 +14,12 @@
       changed_when: false
       failed_when: false
 
+#    - name: Pre_check | Install Helm
+#      ansible.builtin.package:
+#        name: helm
+#        state: present
+#     when: helm_check.rc == 0
+
     - name: Pre_check | MSG fail kubectl
       ansible.builtin.assert:
         that: kubectl_check.rc == 0
@@ -25,3 +31,27 @@
         that: helm_check.rc == 0
         fail_msg: "Helm is not installed. Perform the installation according to the following instructions: https://timeweb.cloud/docs/k8s/helm"
         success_msg: "Helm is installed. The installer is still working."
+
+    - name: Pre_check | Check pip3
+      ansible.builtin.command:
+        cmd: pip3 --version
+      register: pip3_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Pre_check | Install pip3
+      ansible.builtin.package:
+        name: python3-pip
+        state: present
+      when: pip3_check.rc != 0
+
+    - name: Pre_check | INstall pip requirements
+      ansible.builtin.pip:
+        requirements: "{{ playbook_dir }}/../requirements.txt"
+        state: present
+        executable: pip3
+
+    - name: Pre_check | Install collection kubernetes.core
+      community.general.ansible_galaxy_install:
+        type: collection
+        name: kubernetes.core

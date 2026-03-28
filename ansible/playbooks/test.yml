@@ -1,0 +1,9 @@
+- name: Pre_checks
+  hosts: local
+  become: true
+  tasks:
+    - name: Pre_check | Add Helm repositories
+      community.kubernetes.helm_repository:
+        name: "{{ item.key }}"
+        repo_url: "{{ item.value }}"
+      loop: "{{ helm_repositories|dict2items }}"

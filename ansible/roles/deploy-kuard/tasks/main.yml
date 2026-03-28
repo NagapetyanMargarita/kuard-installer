@@ -1,0 +1,8 @@
+- name: Install Kuard Helm chart
+  community.kubernetes.helm:
+    name: "{{ kuard_helm }}"
+    chart_ref: "oci://ghcr.io/nagapetyanmargarita/charts/kuard"
+    chart_version: "{{ kuard_version }}"
+    release_namespace: "{{ kuard_namespace }}"
+    create_namespace: yes
+    state: present

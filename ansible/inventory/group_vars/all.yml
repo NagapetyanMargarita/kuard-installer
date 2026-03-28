@@ -1,0 +1,15 @@
+---
+monitoring_namespace: "monitoring"
+monitoring_helm: "monitoring"
+
+kuard_namespace: kuard
+kuard_helm: kuard
+kuard_version: 0.1.2
+
+helm_repositories:
+  prometheus-community: "https://prometheus-community.github.io/helm-charts"
+  grafana: "https://grafana.github.io/helm-charts"
+  fluent: "https://fluent.github.io/helm-charts"
+  minio: "https://charts.min.io/"
+
+kubeconfig_path: "{{ lookup('env', 'KUBECONFIG') }}"

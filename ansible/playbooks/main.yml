@@ -1,10 +1,19 @@
 ---
-- name: Include checks playbook
-  ansible.builtin.import_playbook: pre_checks.yml
+#- name: Include pre_checks playbook
+#  ansible.builtin.import_playbook: pre_checks.yml
 
-- name: Include checks playbook
+- name: Include pre_checks playbook
+  ansible.builtin.import_playbook: test.yml
+
+#- name: Include monitoring playbook
+#  ansible.builtin.import_playbook: logs.yml
+
+- name: Include monitoring playbook
   ansible.builtin.import_playbook: monitoring.yml
 
-- name: Include checks playbook
-  ansible.builtin.import_playbook: post_checks.yml
+#- name: Include deploy_kuard playbook
+#  ansible.builtin.import_playbook: deploy_kuard.yml
+
+#- name: Include post_checks playbook
+#  ansible.builtin.import_playbook: post_checks.yml
     

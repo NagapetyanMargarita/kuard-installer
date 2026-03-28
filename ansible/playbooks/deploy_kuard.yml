@@ -1,0 +1,7 @@
+- name: Kuard
+  hosts: local
+  become: yes
+  environment:
+  - KUBECONFIG: "{{ kubeconfig_path }}"
+  roles:
+    - deploy-kuard

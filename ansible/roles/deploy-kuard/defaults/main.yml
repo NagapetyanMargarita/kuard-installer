@@ -1,0 +1,5 @@
+kuard_namespace: kuard
+kuard_helm: kuard
+kuard_version: 0.1.2
+
+kuard_values:

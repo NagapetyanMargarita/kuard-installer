@@ -1,0 +1,7 @@
+- name: Remove kuard-installer
+  hosts: local
+  become: true
+  environment:
+    - KUBECONFIG: "{{ kubeconfig_path }}"
+  roles:
+    - remove
