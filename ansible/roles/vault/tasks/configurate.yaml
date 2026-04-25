@@ -1,0 +1,140 @@
+- name: Vault | Enable KV secret engine
+  uri:
+    url: "{{ vault_url }}/v1/sys/mounts/{{ vault_infra_secrets_mount }}"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      type: kv-v2
+      description: "KV store for application secrets"
+  register: result
+  failed_when: result.status not in [200, 204, 400]
+
+- name: Vault | Enable auth methods
+  uri:
+    url: "{{ vault_url }}/v1/sys/auth/{{ item }}"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      type: "{{ item }}"
+  loop:
+    - approle
+    - kubernetes
+  register: result
+  failed_when: result.status not in [200, 204, 400]
+
+- name: DS | Create SA's for infra product
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: "{{ vault_service_account }}"
+        namespace: "{{ vault_namespace }}"
+  loop:
+    - infra-vault-ro
+    - infra-vault-rw
+  loop_control:
+    loop_var: vault_service_account
+
+- name: Vault | Create policies
+  uri:
+    url: "{{ vault_url }}/v1/sys/policies/acl/{{ item.name }}"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      policy: "{{ item.rules }}"
+  loop: "{{ vault_policies }}"
+  register: result
+  until: result.status in [200, 204]
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+  failed_when: result.status not in [200, 204, 400]
+
+- name: Vault | Create approles
+  ansible.builtin.include_tasks: approles.yaml
+  loop:
+    - infra-ro
+    - infra-rw
+  loop_control:
+    loop_var: vault_role_name
+
+
+- name: Vault | Read k8s api cerver ca cert
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    namespace: kube-system
+    name: extension-apiserver-authentication
+  register: k8s_api_ca_cert_cm_info
+
+
+- name: Vault | Configure k8s auth
+  uri:
+    url: "{{ vault_url }}/v1/auth/kubernetes/config"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      kubernetes_host: "https://kubernetes.default.svc.cluster.local:443"
+      kubernetes_ca_cert: "{{ k8s_api_ca_cert_cm_info.resources[0].data['client-ca-file'] }}"
+  register: config_result
+  until: config_result.status in [200, 204]
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+  failed_when: config_result.status not in [200, 204, 400]
+
+- name: Vault | Configure k8s auth role for infra-ro
+  uri:
+    url: "{{ vault_url }}/v1/auth/kubernetes/role/infra-ro"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      bound_service_account_names:
+        - infra-vault-ro
+      bound_service_account_namespaces:
+        - "{{ vault_namespace }}"
+      policies:
+        - infra-ro
+      ttl: "24h"
+  register: role_result
+  until: role_result.status in [200, 204]
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+  failed_when: role_result.status not in [200, 204, 400]
+
+- name: Vault | Configure k8s auth role for infra-rw
+  uri:
+    url: "{{ vault_url }}/v1/auth/kubernetes/role/infra-rw"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      bound_service_account_names:
+        - infra-vault-rw
+      bound_service_account_namespaces:
+        - "{{ vault_namespace }}"
+      policies:
+        - infra-rw
+      ttl: "24h"
+  register: role_result
+  until: role_result.status in [200, 204]
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+  failed_when: role_result.status not in [200, 204, 400]

@@ -1,0 +1,22 @@
+KUBECONFIG: /home/mnagapetyan/.kube/config
+
+# INFRA services
+vault_enabled: true
+falco_enabled: true
+trivy_operator_enabled: true
+
+# LOGS services
+loki_enabled: true
+minio_enabled: true
+fluent_bit_enabled: true
+
+# MONITORING services
+monitoring_enabled: true
+smtp_smarthost: 'smtp.gmail.com:587'
+smtp_from: 'kuard_email@gmail.com' # Адрес, который будет указан в поле "От кого"
+smtp_to: 'your_email@gmail.com' # Адрес, кому отправляем
+smtp_auth_username: 'kuard_email@gmail.com' # Логин - это полный адрес вашего почтового ящика
+smtp_auth_password: 'xxxx xxxx xxxx xxxx' # Пароль - сгенерированный App Password
+smtp_require_tls: true
+# Post verification
+post_checks: false

@@ -2,6 +2,6 @@
   hosts: local
   become: yes
   environment:
-  - KUBECONFIG: "{{ kubeconfig_path }}"
+  - KUBECONFIG: "{{ KUBECONFIG }}"
   roles:
     - health-checks

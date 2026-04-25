@@ -1,7 +1,7 @@
 ---
-- name: Health Checks | Wait 1 min
+- name: Health Checks | Wait 2 min
   ansible.builtin.wait_for:
-    timeout: 60
+    timeout: 120
 
 - name: Health Checks | Get failed Pod
   kubernetes.core.k8s_info:

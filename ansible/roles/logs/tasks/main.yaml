@@ -5,19 +5,20 @@
     name: "{{ logs_namespace }}"
     state: present
 
-#- name: Logs | Install Minio chart
-#  community.kubernetes.helm:
-#    name: "{{ minio_helm }}"
-#    chart_ref: minio/minio
-#    chart_version: "5.4.0"
-#    release_namespace: "{{ logs_namespace }}"
-#    create_namespace: true
-#    values: "{{ minio_values }}"
-#    wait: true
-#    wait_timeout: "360s"
+- name: Logs | Install Minio chart
+  kubernetes.core.helm:
+    name: "{{ minio_helm }}"
+    chart_ref: minio/minio
+    chart_version: "5.4.0"
+    release_namespace: "{{ logs_namespace }}"
+    create_namespace: true
+    values: "{{ minio_values }}"
+    wait: true
+    wait_timeout: "360s"
+  when: minio_enabled
 
 - name: Logs | Install Loki chart
-  community.kubernetes.helm:
+  kubernetes.core.helm:
     name: "{{ loki_helm }}"
     chart_ref: grafana/loki
     chart_version: "6.28.0"
@@ -26,14 +27,16 @@
     values: "{{ loki_values }}"
     wait: true
     wait_timeout: "160s"
-  ignore_errors: true   
+  ignore_errors: true
+  when: loki_enabled
 
-#- name: Monitoring | Install Fluent-bit
-#  community.kubernetes.helm:
-#    name: "{{ fluentbit_helm }}"
-#    chart_ref: fluent/fluent-bit
-#    chart_version: "0.56.0"
-#    release_namespace: "{{ logs_namespace }}"
-#    values: "{{ fluentbit_values }}"
-#    wait: true
-#    wait_timeout: "360s"
+- name: Monitoring | Install Fluent-bit
+  kubernetes.core.helm:
+    name: "{{ fluentbit_helm }}"
+    chart_ref: fluent/fluent-bit
+    chart_version: "0.56.0"
+    release_namespace: "{{ logs_namespace }}"
+    values: "{{ fluentbit_values }}"
+    wait: true
+    wait_timeout: "360s"
+  when: fluent_bit_enabled

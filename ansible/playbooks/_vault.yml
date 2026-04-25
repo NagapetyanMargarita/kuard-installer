@@ -1,7 +1,7 @@
-- name: Remove kuard-installer
+- name: Vault
   hosts: local
-  become: true
+  become: yes
   environment:
     - KUBECONFIG: "{{ KUBECONFIG }}"
   roles:
-    - remove
+    - vault

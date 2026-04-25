@@ -1,0 +1,72 @@
+---
+- name: Vault | Create AppRole
+  uri:
+    url: "{{ vault_url }}/v1/auth/approle/role/{{ vault_role_name }}"
+    method: POST
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      token_policies: "{{ vault_role_name }}"
+      token_ttl: "24h"
+      token_max_ttl: "168h"
+      secret_id_ttl: "24h"
+  register: create_role
+  until: create_role.status in [200, 204]
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+  failed_when: create_role.status not in [200, 204, 400]
+
+- name: Vault | Get role_id
+  uri:
+    url: "{{ vault_url }}/v1/auth/approle/role/{{ vault_role_name }}/role-id"
+    method: GET
+    validate_certs: no
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+  register: vault_role_id
+  until: vault_role_id.status == 200
+  retries: "{{ vault_api_retries }}"
+  delay: "{{ vault_api_delay }}"
+
+- name: Vault | Check if approle secret already exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    namespace: "{{ vault_namespace }}"
+    name: "vault-{{ vault_role_name }}-approle"
+  register: existing_approle_secret
+
+- name: Vault | Create secret for approle
+  when: existing_approle_secret.resources | length == 0
+  block:
+    - name: Vault | Get secret_id
+      uri:
+        url: "{{ vault_url }}/v1/auth/approle/role/{{ vault_role_name }}/secret-id"
+        method: POST
+        validate_certs: no
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        body_format: json
+        body: {}
+      register: vault_secret_id
+      until: vault_secret_id.status == 200
+      retries: "{{ vault_api_retries }}"
+      delay: "{{ vault_api_delay }}"
+
+    - name: Vault | Create secret for approle
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "vault-{{ vault_role_name }}-approle"
+            namespace: "{{ vault_namespace }}"
+          type: Opaque
+          data:
+            role_id: "{{ vault_role_id.json.data.role_id | b64encode }}"
+            secret_id: "{{ vault_secret_id.json.data.secret_id | b64encode }}"
+      register: result
+      until: result is succeeded

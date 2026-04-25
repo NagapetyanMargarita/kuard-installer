@@ -1,0 +1,114 @@
+- name: Vault | Create vault namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ vault_namespace }}"
+    state: present
+
+- name: Vault | Add nodeport service vault
+  kubernetes.core.k8s:
+    resource_definition: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ vault_nodeport_name }}"
+        namespace: "{{ vault_namespace }}"
+      spec:
+        type: "NodePort"
+        ports:
+          - port: {{ vault_port }}
+            nodePort: {{ vault_nodeport }}
+            targetPort: {{ vault_port }}
+        selector: {{ vault_selector_labels }}
+        publishNotReadyAddresses: true
+    state: present
+
+- name: Vault | Check if the secret exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    namespace: "{{ vault_namespace }}"
+    name: "{{ vault_keys }}"
+  register: vault_secret_info
+
+- name: Vault | Init
+  ansible.builtin.include_tasks: init.yaml
+  when: vault_secret_info.resources | length == 0
+
+- name: Vault | Read token
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: "{{ vault_keys }}"
+    namespace: "{{ vault_namespace }}"
+  register: vault_keys_info
+
+- name: Vault | Set token
+  ansible.builtin.set_fact:
+    vault_token: "{{ vault_keys_info.resources[0].data['root_token'] | b64decode }}"
+  
+- name: Install Vault Helm chart
+  kubernetes.core.helm:
+    name: "{{ vault_helm }}"
+    chart_ref: "oci://ghcr.io/nagapetyanmargarita/charts/vault"
+    chart_version: "{{ vault_version }}"
+    release_namespace: "{{ vault_namespace }}"
+    create_namespace: yes
+    state: present
+    values:
+      server:
+        standalone:
+          enabled: true
+          config: |
+            ui = true
+            cluster_name = "vault-integrated-storage"
+            storage "raft" {
+              path    = "/vault/data/"
+            }
+
+            listener "tcp" {
+              address = "[::]:8200"
+              cluster_address = "[::]:8201"
+              tls_disable = "true"
+            }
+            service_registration "kubernetes" {}
+        postStart:
+          - /bin/sh
+          - -c
+          - for step in $(seq 60); do vault operator unseal -tls-skip-verify $VAULT_UNSEAL_KEY; if [[ $? == 0 ]]; then exit 0; else sleep 1; fi; done; exit 1;
+        extraSecretEnvironmentVars:
+          - envName: VAULT_UNSEAL_KEY
+            secretName: "{{ vault_keys }}"
+            secretKey: unseal_keys
+        dataStorage:
+          size: 5Gi
+
+- name: Vault | Wait for 20 seconds
+  ansible.builtin.pause:
+    seconds: 20
+
+- name: Vault | Wait for each vault pod running
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ vault_namespace }}"
+    name: "vault-0"
+  register: pod_result
+  until:
+    - pod_result.resources | length > 0
+    - pod_result.resources[0].status.phase == "Running"
+  retries: 30
+  delay: 10
+
+- name: Vault | Configure
+  ansible.builtin.include_tasks: configurate.yaml
+
+#- name: Vault | Write secret
+#  ansible.builtin.include_tasks: write_secrets.yaml
+
+- name: Vault | Del nodeport service Vault
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Service
+    name: "{{ vault_nodeport_name }}"
+    namespace: "{{ vault_namespace }}"
+    state: absent

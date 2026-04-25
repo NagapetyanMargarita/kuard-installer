@@ -1,0 +1,96 @@
+falco_helm: "falco"
+falco_namespace: "infra"
+
+trivy_operator_helm: "trivy-operator"
+trivy_operator_namespace: "infra"
+
+falco_values:
+  falco:
+    json_output: true
+    time_format_iso_8601: true
+    priority: warning
+    stdout_output:
+      enabled: true
+    http_output:
+      enabled: true
+      url: ""
+
+  metrics:
+    enabled: true
+    interval: 1h
+    service:
+      create: true
+      type: ClusterIP
+      ports:
+        metrics:
+          port: 8765
+          targetPort: 8765
+          protocol: "TCP"
+
+  serviceMonitor:
+    create: true
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    labels:
+      release: monitoring
+
+  driver:
+    enabled: true
+    kind: auto
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  collectors:
+    enabled: true
+    containerEngine:
+      enabled: true
+
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8765"
+    prometheus.io/path: "/metrics"
+
+  falcosidekick:
+    enabled: true
+    replicaCount: 1
+    grafana:
+      dashboards:
+        enabled: false
+    config:
+      debug: true
+      minimumpriority: "warning"
+      loki:
+        hostport: "http://loki.logs.svc.cluster.local:3100"
+        tenant: default
+        minimumpriority: "warning"
+        format: "json"
+
+trivy_operator_values:
+  targetNamespaces: "" # выбор ns для проверки
+  excludeNamespaces: "kube-system,trivy-system,monitoring" # исключить ns из проверки
+  targetWorkloads: "pod,replicaset,replicationcontroller,statefulset,daemonset,cronjob,job" # ОБъекты для сканирования
+  operator:
+    scannerReportTTL: "12h"
+    scanJobsConcurrentLimit: 2
+    configAuditScannerEnabled: false #  flag to enable configuration audit scanner
+    rbacAssessmentScannerEnabled: false #  flag to enable rbac assessment scanner
+    infraAssessmentScannerEnabled: false #  flag to enable infra assessment scanner
+    clusterComplianceEnabled: false # flag to enable cluster compliance scanner
+
+    vulnerabilityScannerEnabled: true          # включить сканер уязвимостей (по умолчанию true)
+    exposedSecretScannerEnabled: true          # поиск секретов в образах
+    scanJobTTL: "1h"                           # удалять завершенные Jobs через час
+    metricsFindingsEnabled: true               # метрики для Prometheus
+
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    labels:
+      release: monitoring

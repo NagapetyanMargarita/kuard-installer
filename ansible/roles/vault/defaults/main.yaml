@@ -1,0 +1,66 @@
+vault_namespace: infra
+vault_version: 0.32.0
+vault_helm: vault
+
+vault_port: 8200
+vault_cluster_port: 8201
+vault_nodeport: 31031
+vault_nodeport_name: nodeport-vault
+vault_keys: "vault-keys"
+vault_url: "http://{{ node_ip }}:{{ vault_nodeport }}"
+vault_infra_secrets_mount: infra
+
+vault_selector_labels:
+  app.kubernetes.io/instance: vault
+  app.kubernetes.io/name: vault
+  apps.kubernetes.io/pod-index: "0"
+  component: server
+
+vault_api_retries: 1
+vault_api_delay: 3
+
+vault_policies:
+  - name: infra-rw
+    rules: |
+      path "{{ vault_infra_secrets_mount }}/*"
+      {
+        capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+      }
+
+  - name: infra-ro
+    rules: |
+      path "{{ vault_infra_secrets_mount }}/*"
+      {
+        capabilities = ["read", "list"]
+      }
+
+
+vault_secrets:
+  minio:
+    root: "app_user"
+    password: "SuperSecretPa$$w0rd"
+    host: "postgres.prod.svc.cluster.local"
+    port: "5432"
+  test:
+    username: "app_user2"
+    port: "5432"
+
+vault_values:
+  server:
+    standalone:
+      enabled: true
+      config: |
+        ui = true
+        cluster_name = "vault-integrated-storage"
+        storage "raft" {
+          path    = "/vault/data/"
+        }
+
+        listener "tcp" {
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_disable = "true"
+        }
+        service_registration "kubernetes" {}
+    dataStorage:
+      size: 5Gi

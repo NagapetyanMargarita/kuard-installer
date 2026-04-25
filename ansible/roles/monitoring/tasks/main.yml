@@ -5,13 +5,13 @@
     name: "{{ monitoring_namespace }}"
     state: present
 
-#- name: Monitoring | Apply dashboards ConfigMap to Kubernetes
-#  kubernetes.core.k8s:
-#    state: present
-#    definition: "{{ lookup('template', 'dashboard-configmap.yml.j2') }}"
+- name: Monitoring | Apply dashboards ConfigMap to Kubernetes
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'dashboard-configmap.yml.j2') }}"
 
 - name: Monitoring | Install kube-prometheus-stack
-  community.kubernetes.helm:
+  kubernetes.core.helm:
     name: "{{ monitoring_helm }}"
     chart_ref: prometheus-community/kube-prometheus-stack
     chart_version: "80.10.0"

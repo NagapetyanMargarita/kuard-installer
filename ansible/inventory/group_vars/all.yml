@@ -11,5 +11,7 @@ helm_repositories:
   grafana: "https://grafana.github.io/helm-charts"
   fluent: "https://fluent.github.io/helm-charts"
   minio: "https://charts.min.io/"
+  falcosecurity: "https://falcosecurity.github.io/charts"
+  aqua: "https://aquasecurity.github.io/helm-charts/"
 
 kubeconfig_path: "{{ lookup('env', 'KUBECONFIG') }}"

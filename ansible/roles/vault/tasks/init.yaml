@@ -1,0 +1,81 @@
+- name: Vault | Install Vault Helm chart
+  kubernetes.core.helm:
+    name: "{{ vault_helm }}"
+    chart_ref: "oci://ghcr.io/nagapetyanmargarita/charts/vault"
+    chart_version: "{{ vault_version }}"
+    release_namespace: "{{ vault_namespace }}"
+    create_namespace: yes
+    state: present
+    values: "{{ vault_values }}"
+
+- name: Vault | Wait for 20 seconds
+  ansible.builtin.pause:
+    seconds: 20
+
+- name: Vault | Wait for each vault pod running
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ vault_namespace }}"
+    name: "vault-0"
+  register: pod_result
+  until:
+    - pod_result.resources | length > 0
+    - pod_result.resources[0].status.phase == "Running"
+  retries: 30
+  delay: 10
+
+- name: Vailt | Init
+  uri:
+    url: "{{ vault_url }}/v1/sys/init"
+    method: PUT
+    validate_certs: no
+    body_format: json
+    body:
+      secret_shares: 1
+      secret_threshold: 1
+  register: vault_init
+
+- name: Print vault_init
+  debug:
+    var: vault_init
+
+- name: Vault | Save keys
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ vault_keys }}"
+        namespace: "{{ vault_namespace }}"
+      type: Opaque
+      data:
+        unseal_keys: "{{ vault_init.json.keys_base64[0] | b64encode }}"
+        root_token: "{{ vault_init.json.root_token | b64encode }}"
+  register: result
+  until: result is succeeded
+
+- name: Vault | Check seal status
+  uri:
+    url: "{{ vault_url }}/v1/sys/seal-status"
+    validate_certs: no
+  register: seal_status
+
+- name: Vault | Unseal
+  uri:
+    url: "{{ vault_url }}/v1/sys/unseal"
+    method: PUT
+    validate_certs: no
+    body_format: json
+    body:
+      key: "{{ vault_init.json.keys_base64[0] }}"
+  register: unseal_result
+  when: seal_status.json.sealed
+
+- name: Vault | Uninstall vault helm chart
+  kubernetes.core.helm:
+    name: "{{ vault_helm }}"
+    namespace: "{{ vault_namespace }}"
+    state: absent
+    wait: true

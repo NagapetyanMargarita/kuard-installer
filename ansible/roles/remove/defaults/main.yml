@@ -1,4 +1,4 @@
-crd_monitoring_items:
+remove_crd_monitoring_items:
   - alertmanagerconfigs.monitoring.coreos.com
   - alertmanagers.monitoring.coreos.com
   - podmonitors.monitoring.coreos.com
@@ -9,3 +9,31 @@ crd_monitoring_items:
   - scrapeconfigs.monitoring.coreos.com
   - servicemonitors.monitoring.coreos.com
   - thanosrulers.monitoring.coreos.com
+
+remove_crd_trivy_operators_items:
+  - vulnerabilityreports.aquasecurity.github.io
+  - exposedsecretreports.aquasecurity.github.io
+  - configauditreports.aquasecurity.github.io
+   - clusterconfigauditreports.aquasecurity.github.io
+  - bacassessmentreports.aquasecurity.github.io
+  - infraassessmentreports.aquasecurity.github.io
+  - clusterrbacassessmentreports.aquasecurity.github.io
+  - clustercompliancereports.aquasecurity.github.io
+  - clusterinfraassessmentreports.aquasecurity.github.io
+  - bomreports.aquasecurity.github.io
+  - clustersbomreports.aquasecurity.github.io
+  - clustervulnerabilityreports.aquasecurity.github.io
+
+remove_helm_releases:
+  - { name: "monitoring", namespace: "monitoring" }
+  - { name: "minio", namespace: "logs" }
+  - { name: "loki", namespace: "logs" }
+  - { name: "fluent-bit", namespace: "logs" }
+  - { name: "falco", namespace: "infra" }
+  - { name: "trivy-operator", namespace: "infra" }
+  - { name: "vault", namespace: "infra" }
+
+remove_namespaces:
+  - monitoring
+  - logs
+  - infra

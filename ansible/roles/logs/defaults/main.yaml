@@ -1,6 +1,6 @@
 logs_namespace: "logs"
 minio_helm: "minio"
-minio_endpoint: "minio.monitoring.svc.cluster.local:9000"
+minio_endpoint: "minio.logs.svc.cluster.local:9000"
 minio_root: minio
 minio_password: minio123
 
@@ -16,7 +16,7 @@ minio_values:
   rootPassword: "{{ minio_password }}"
   persistence:
     enabled: true
-    size: 10Gi
+    size: 5Gi
     storageClass: standard
   resources:
     requests:
@@ -103,11 +103,11 @@ loki_values:
     replicas: 1
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
         memory: "512Mi"
         cpu: "200m"
+      limits:
+        memory: "2Gi"
+        cpu: "500m"
     persistence:
       enabled: true
       size: 5Gi
@@ -153,8 +153,8 @@ fluentbit_values:
     service: |
       [SERVICE]
           Daemon Off
-          Flush 5
-          Log_Level  info
+          Flush 10
+          Log_Level info
           Parsers_File /fluent-bit/etc/parsers.conf
           Parsers_File /fluent-bit/etc/conf/custom_parsers.conf
           HTTP_Server On
@@ -162,14 +162,13 @@ fluentbit_values:
           HTTP_Port 2020
           Health_Check On
 
-    ## https://docs.fluentbit.io/manual/pipeline/inputs
     inputs: |
       [INPUT]
           Name tail
           Path /var/log/containers/*.log
           multiline.parser docker, cri
           Tag kube.*
-          Mem_Buf_Limit 5MB
+          Mem_Buf_Limit 50MB
           Skip_Long_Lines On
 
       [INPUT]
@@ -178,7 +177,6 @@ fluentbit_values:
           Systemd_Filter _SYSTEMD_UNIT=kubelet.service
           Read_From_Tail On
 
-    ## https://docs.fluentbit.io/manual/pipeline/filters
     filters: |
       [FILTER]
           Name kubernetes
@@ -187,12 +185,14 @@ fluentbit_values:
           Keep_Log Off
           K8S-Logging.Parser On
           K8S-Logging.Exclude On
+
       [FILTER]
           Name         nest
           Match        kube.*
           Operation    lift
           Nested_under kubernetes
           Add_prefix   kubernetes_
+
       [FILTER]
           Name    modify
           Match   kube.*
@@ -200,13 +200,12 @@ fluentbit_values:
           Rename  kubernetes_pod_name        pod
           Rename  kubernetes_container_name  container
 
-    ## https://docs.fluentbit.io/manual/pipeline/outputs
     outputs: |
       [OUTPUT]
           Name loki
           Match *
           Host loki.{{ logs_namespace }}.svc.cluster.local
           Port 3100
-          Labels job=fluent-bit, namespace="$namespace, pod=$pod, container=$container
+          Labels job=fluent-bit, namespace="$namespace", pod="$pod", container="$container"
           Tenant_id default
-
+          Compress gzip

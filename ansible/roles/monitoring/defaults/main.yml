@@ -70,8 +70,36 @@ monitoring_values:
           gnetId: 11454
           revision: 14
           datasource: Prometheus
+        trivy-operator:
+          gnetId: 17813
+          revision: 2
+          datasource: Prometheus
         custom-dashboard:
           json: |
             {{ lookup('file', role_path + '/files/dashboards/node-exporter.json') | indent(12, true) }}
   alertmanager:
-    enabled: false
+    enabled: true
+    config:
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: "{{ smtp_smarthost }}" # Адрес SMTP-сервера
+        smtp_from: "{{ smtp_from }}" # Адрес, который будет указан в поле "От кого"
+        smtp_auth_username: "{{ smtp_auth_username }}" # Логин — это полный адрес вашего нового технического ящика
+        smtp_auth_password: "{{ smtp_auth_password }}" # Пароль — сгенерированный App Password!
+        smtp_require_tls: true
+      route:
+        group_by: ['alertname', 'namespace', 'severity']  # Группировка
+        group_wait: 30s           # Время ожидания перед отправкой первой группы
+        group_interval: 5m        # Интервал между отправками новых алертов в группу
+        repeat_interval: 4h       # Как часто повторять, если алерт не resolved
+        receiver: 'email-notifications'
+        routes:
+        - receiver: 'null'
+          matchers:
+            - alertname = "Watchdog"
+      receivers:
+        - name: 'null'
+        - name: 'email-notifications'
+          email_configs:
+            - to: "{{ smtp_to }}" #Кому отправлять
+              send_resolved: true
