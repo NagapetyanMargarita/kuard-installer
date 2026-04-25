@@ -3,15 +3,15 @@
 
 ## Компоненты
 
-| Сервис | Назначение |
-|------------|------------|
-| [vault](https://github.com/hashicorp/vault-helm/tree/main) | Хранение и управление секретами (токены, пароли, сертификаты) с контролем доступа |
-| [minio](https://github.com/minio/minio/tree/master/helm/minio) | S3-совместимое объектное хранилище (используется как бекенд для Loki) |
-| [fluent-bit](https://github.com/fluent/helm-charts) | Легковесный сборщик логов с узлов Kubernetes |
-| [loki](https://github.com/grafana/loki/tree/main/production/helm/loki) | Агрегация и хранение логов (как Prometheus, но для логов) |
-| [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) | Полный мониторинг кластера: Prometheus + Grafana + Alertmanager
-| [falco](https://github.com/falcosecurity/charts/tree/master/charts/falco) | Обнаружение аномалий и угроз в реальном времени (runtime security)
-| [trivy-operator](https://github.com/aquasecurity/trivy-operator/tree/main/deploy/helm) | Автоматическое сканирование образов и запущенных подов на уязвимости внутри кластера
+| Сервис | Версия | Назначение |
+|------------|------------|------------|
+| [vault](https://github.com/hashicorp/vault-helm/tree/main) | 0.32.0 | Хранение и управление секретами (токены, пароли, сертификаты) с контролем доступа |
+| [minio](https://github.com/minio/minio/tree/master/helm/minio) | 5.4.0 | S3-совместимое объектное хранилище (используется как бекенд для Loki) |
+| [fluent-bit](https://github.com/fluent/helm-charts) | 0.56.0 | Легковесный сборщик логов с узлов Kubernetes |
+| [loki](https://github.com/grafana/loki/tree/main/production/helm/loki) | 6.28.0 | Агрегация и хранение логов (как Prometheus, но для логов) |
+| [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) | 80.10.0 | Полный мониторинг кластера: Prometheus + Grafana + Alertmanager
+| [falco](https://github.com/falcosecurity/charts/tree/master/charts/falco) | 8.0.1 | Обнаружение аномалий и угроз в реальном времени (runtime security)
+| [trivy-operator](https://github.com/aquasecurity/trivy-operator/tree/main/deploy/helm) | 0.32.1 | Автоматическое сканирование образов и запущенных подов на уязвимости внутри кластера
 
 ## 🛠 Начальные требования
 
@@ -77,9 +77,10 @@ Kuard-installer был создан как комплексное решение
 ```
 ./run.sh --remove
 ```
+> Можно использовать сокращенную версию ключа `-r`.
 ## 💡 Доступные ключи
 
 ```
 ./run.sh --help
 ```
-Можно использовать сокращенную версию ключа `-h`.
+> Можно использовать сокращенную версию ключа `-h`.
